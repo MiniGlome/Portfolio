@@ -24,7 +24,7 @@ Before diving into the codebase and this implementation of the Blend lending pro
 - [interfaces/IERC20.so](https://github.com/Cyfrin/2023-07-beedle/blob/main/src/interfaces/IERC20.sol)
 - [interfaces/ISwapRouter.sol](https://github.com/Cyfrin/2023-07-beedle/blob/main/src/interfaces/ISwapRouter.sol)
   
-## Issues found by MiniGlome
+## Issues found by Mlome
 
 | Severity | Title | Count |
 |:--|:--|:--:|

@@ -16,7 +16,7 @@ This project is meant to be a stablecoin where users can deposit WETH and WBTC i
 - [DecentralizedStableCoin](https://github.com/Cyfrin/2023-07-foundry-defi-stablecoin/blob/main/src/DecentralizedStableCoin.sol)
 - [OracleLib](https://github.com/Cyfrin/2023-07-foundry-defi-stablecoin/blob/main/src/libraries/OracleLib.sol)
   
-## Issues found by MiniGlome
+## Issues found by Mlome
 
 | Severity | Title | Count |
 |:--|:--|:--:|

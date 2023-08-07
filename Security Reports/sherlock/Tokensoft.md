@@ -28,7 +28,7 @@ Tokensoft stands as a prominent provider of enterprise services and tools for bl
 - [contracts/claim/abstract/TrancheVesting.sol](https://github.com/SoftDAO/contracts/blob/291df55ddb0dbf53c6ed4d5b7432db0c357ca4d3/contracts/claim/abstract/TrancheVesting.sol)
 - [contracts/utilities/Sweepable.sol](https://github.com/SoftDAO/contracts/blob/291df55ddb0dbf53c6ed4d5b7432db0c357ca4d3/contracts/utilities/Sweepable.sol)
   
-## Issues found by MiniGlome
+## Issues found by Mlome
 
 | Severity | Title | Count |
 |:--|:--|:--:|
