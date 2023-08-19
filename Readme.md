@@ -9,13 +9,14 @@ Hello, and I am an independent blockchain security researcher. ⛓️💻
 
 | Overall issues found | High risk | Unique highs | Medium risk | Unique mediums | Gas optimization reports |
 |:--:|:--:|:--:|:--:|:--:|:--:|
-| 19 Issues found | 13 Highs | - | 6 Mediums | - | 11 Gas reports |
+| 19 Issues found | 13 Highs | - | 7 Mediums | - | 11 Gas reports |
 
 # Code4rena <img src="https://code4rena.com/logos/c4-logo.svg" width=100 height=25>
 
 ### Audit Competitions
 | Contest | High risk | Medium risk | Security report | Gas optimizations | Payout 
 |:--|:--:|:--:|:--:|:--:|--:|
+| [PoolTogether](https://code4rena.com/contests/2023-07-pooltogether#top) | - | 1 medium | private | - | $569.07 USDC |
 | [Canto ID Protocol](https://code4rena.com/contests/2023-01-canto-identity-protocol-contest#top) | - | 1 medium | [Source](/Security%20Reports/code4rena/Canto_ID_Protocol.md) | [Gas report](/Security%20Reports/code4rena/Canto_ID_Protocol_GAS.md) | $135.96 CANTO |
 | [RabbitHole](https://code4rena.com/contests/2023-01-rabbithole-quest-protocol-contest#top) | 1 high | 1 medium | [Source](/Security%20Reports/code4rena/RabbitHole.md) | [Gas report](/Security%20Reports/code4rena/RabbitHole_GAS.md) | $119.15 USDC |
 | [Contest 225](https://code4rena.com/contests/2023-03-contest-225-contest#top) | - | - | - | private | $74.86 USDC |
