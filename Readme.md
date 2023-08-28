@@ -9,7 +9,7 @@ Hello, and I am an independent blockchain security researcher. ⛓️💻
 
 | Overall issues found | High risk | Unique highs | Medium risk | Unique mediums | Gas optimization reports |
 |:--:|:--:|:--:|:--:|:--:|:--:|
-| 19 Issues found | 13 Highs | - | 7 Mediums | - | 11 Gas reports |
+| 19 Issues found | 11 Highs | - | 8 Mediums | - | 11 Gas reports |
 
 # Code4rena <img src="https://code4rena.com/logos/c4-logo.svg" width=100 height=25>
 
@@ -32,7 +32,7 @@ Hello, and I am an independent blockchain security researcher. ⛓️💻
 ### Audit Competitions
 | Contest | High risk | Medium risk | Security report | Gas optimizations | Payout 
 |:--|:--:|:--:|:--:|:--:|--:|
-| [Beedle](https://www.codehawks.com/contests/clkbo1fa20009jr08nyyf9wbx) | 10 highs | 1 medium | [Source](/Security%20Reports/codehawks/Beedle.md) | [Gas report](/Security%20Reports/codehawks/Beedle_GAS.md) | - |
+| [Beedle](https://www.codehawks.com/contests/clkbo1fa20009jr08nyyf9wbx) | 9 highs | 2 mediums | [Source](/Security%20Reports/codehawks/Beedle.md) | [Gas report](/Security%20Reports/codehawks/Beedle_GAS.md) | $187.12 USDC |
 | [Stablecoin](https://www.codehawks.com/contests/cljx3b9390009liqwuedkn0m0) | 1 high | 1 medium | [Source](/Security%20Reports/codehawks/Stablecoin.md) | [Gas report](/Security%20Reports/codehawks/Stablecoin_GAS.md) | - |
 | [Escrow](https://www.codehawks.com/contests/cljyfxlc40003jq082s0wemya) | - | - | - | [Gas report](/Security%20Reports/codehawks/Escrow_GAS.md) | - |
 
@@ -41,5 +41,5 @@ Hello, and I am an independent blockchain security researcher. ⛓️💻
 ### Audit Competitions
 | Contest | High risk | Medium risk | Security report | Gas optimizations | Payout 
 |:--|:--:|:--:|:--:|:--:|--:|
-| [Tokensoft](https://audits.sherlock.xyz/contests/100) | 1 high | - | [Source](/Security%20Reports/sherlock/Tokensoft.md) | - | $108.20 USDC |
+| [Tokensoft](https://audits.sherlock.xyz/contests/100) | - | - | [Source](/Security%20Reports/sherlock/Tokensoft.md) | - | - |
 

