@@ -9,7 +9,7 @@ Hello, and I am an independent blockchain security researcher. ⛓️💻
 
 | Overall issues found | High risk | Unique highs | Medium risk | Unique mediums | Gas optimization reports |
 |:--:|:--:|:--:|:--:|:--:|:--:|
-| 19 Issues found | 11 Highs | - | 8 Mediums | - | 11 Gas reports |
+| 21 Issues found | 12 Highs | - | 9 Mediums | - | 11 Gas reports |
 
 # Code4rena <img src="https://code4rena.com/logos/c4-logo.svg" width=100 height=25>
 
@@ -41,5 +41,12 @@ Hello, and I am an independent blockchain security researcher. ⛓️💻
 ### Audit Competitions
 | Contest | High risk | Medium risk | Security report | Gas optimizations | Payout 
 |:--|:--:|:--:|:--:|:--:|--:|
+| [Cooler Update](https://audits.sherlock.xyz/contests/107) | 1 high | 1 medium | [Source](/Security%20Reports/sherlock/Cooler_Update.md) | - | $26.24 USDC |
 | [Tokensoft](https://audits.sherlock.xyz/contests/100) | - | - | [Source](/Security%20Reports/sherlock/Tokensoft.md) | - | - |
+
+# CTF 
+### [ONLYPWNER](https://onlypwner.xyz/) <img src="https://raw.githubusercontent.com/Bobface/onlypwner-challenges/dev/banner.jpg" width=75 height=25>
+4th on the all-time Leaderboard 
+<img src=https://github.com/MiniGlome/Portfolio/assets/54740007/2eef966e-874d-4af3-869e-b2c2ac4e80a2 height=300>
+
 
