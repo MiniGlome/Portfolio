@@ -46,7 +46,7 @@ Hello, and I am an independent blockchain security researcher. ⛓️💻
 
 # CTF 
 ### [ONLYPWNER](https://onlypwner.xyz/) <img src="https://raw.githubusercontent.com/Bobface/onlypwner-challenges/dev/banner.jpg" width=75 height=25>
-4th on the all-time Leaderboard 
+4th on the all-time Leaderboard<br>
 <img src=https://github.com/MiniGlome/Portfolio/assets/54740007/2eef966e-874d-4af3-869e-b2c2ac4e80a2 height=300>
 
 
