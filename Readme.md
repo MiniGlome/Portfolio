@@ -36,7 +36,7 @@ Hello, and I am an independent blockchain security researcher. ⛓️💻
 | [Stablecoin](https://www.codehawks.com/contests/cljx3b9390009liqwuedkn0m0) | 1 high | 1 medium | [Source](/Security%20Reports/codehawks/Stablecoin.md) | [Gas report](/Security%20Reports/codehawks/Stablecoin_GAS.md) | - |
 | [Escrow](https://www.codehawks.com/contests/cljyfxlc40003jq082s0wemya) | - | - | - | [Gas report](/Security%20Reports/codehawks/Escrow_GAS.md) | - |
 
-# Sherlock  <img src="https://audits.sherlock.xyz/_next/static/media/sherlock_logo.dc2b3290.svg" width=22 height=22>
+# Sherlock  <img src="https://audits.sherlock.xyz/_next/static/media/sherlock_logo.bf519c9e.svg" width=22 height=22>
 
 ### Audit Competitions
 | Contest | High risk | Medium risk | Security report | Gas optimizations | Payout 
@@ -44,9 +44,12 @@ Hello, and I am an independent blockchain security researcher. ⛓️💻
 | [Cooler Update](https://audits.sherlock.xyz/contests/107) | 1 high | 1 medium | [Source](/Security%20Reports/sherlock/Cooler_Update.md) | - | $26.24 USDC |
 | [Tokensoft](https://audits.sherlock.xyz/contests/100) | - | - | [Source](/Security%20Reports/sherlock/Tokensoft.md) | - | - |
 
-# CTF 
+# CTF (Web3 competitions)
 ### [ONLYPWNER](https://onlypwner.xyz/) <img src="https://raw.githubusercontent.com/Bobface/onlypwner-challenges/dev/banner.jpg" width=75 height=25>
-4th on the all-time Leaderboard<br>
+4th on the **all-time** Leaderboard. <br>
 <img src=https://github.com/MiniGlome/Portfolio/assets/54740007/2eef966e-874d-4af3-869e-b2c2ac4e80a2 height=300>
 
+### [PARADIGM CTF](https://ctf.paradigm.xyz/) <img src="https://github.com/MiniGlome/Portfolio/assets/54740007/7be7a047-0408-4c81-8765-3b9c0498912c" width=35 height=35>
+Finished 11th with the _DefiHackLabs_ team for the 2023 edition, just after big auditing firms. <br>
+<img src=https://github.com/MiniGlome/Portfolio/assets/54740007/7e7800e2-5970-42ef-8646-12a33a865377 height=300>
 
