@@ -11,6 +11,15 @@ Hello, and I am an independent blockchain security researcher. ⛓️💻
 |:--:|:--:|:--:|:--:|:--:|:--:|
 | 21 Issues found | 12 Highs | - | 9 Mediums | - | 11 Gas reports |
 
+# CodeHawks <img src="https://res.cloudinary.com/droqoz7lg/image/upload/v1689080263/snhkgvtsidryjdtx0pce.png" width=50 height=27>
+
+### Audit Competitions
+| Contest | High risk | Medium risk | Security report | Gas optimizations | Payout 
+|:--|:--:|:--:|:--:|:--:|--:|
+| [Beedle](https://www.codehawks.com/contests/clkbo1fa20009jr08nyyf9wbx) | 9 highs | 2 mediums | [Source](/Security%20Reports/codehawks/Beedle.md) | [Gas report](/Security%20Reports/codehawks/Beedle_GAS.md) | $187.12 USDC |
+| [Stablecoin](https://www.codehawks.com/contests/cljx3b9390009liqwuedkn0m0) | 1 high | 1 medium | [Source](/Security%20Reports/codehawks/Stablecoin.md) | [Gas report](/Security%20Reports/codehawks/Stablecoin_GAS.md) | - |
+| [Escrow](https://www.codehawks.com/contests/cljyfxlc40003jq082s0wemya) | - | - | - | [Gas report](/Security%20Reports/codehawks/Escrow_GAS.md) | - |
+
 # Code4rena <img src="https://code4rena.com/logos/c4-logo.svg" width=100 height=25>
 
 ### Audit Competitions
@@ -26,15 +35,6 @@ Hello, and I am an independent blockchain security researcher. ⛓️💻
 | [Neo Tokyo](https://code4rena.com/contests/2023-03-neo-tokyo-contest#top) | - | - | - | [Gas report](/Security%20Reports/code4rena/NeoTokyo_GAS.md) | $19.30 USDC |
 | [Wenwin](https://code4rena.com/contests/2023-03-wenwin-contest#top) | - | - | - | [Gas report](/Security%20Reports/code4rena/Wenwin_GAS.md) | $12.72 USDC |
 | [Asymmetry](https://code4rena.com/contests/2023-03-asymmetry-contest#top) | - | - | - | [Gas report](/Security%20Reports/code4rena/Asymmetry_GAS.md) | $10.79 USDC |
-
-# CodeHawks <img src="https://res.cloudinary.com/droqoz7lg/image/upload/v1689080263/snhkgvtsidryjdtx0pce.png" width=50 height=27>
-
-### Audit Competitions
-| Contest | High risk | Medium risk | Security report | Gas optimizations | Payout 
-|:--|:--:|:--:|:--:|:--:|--:|
-| [Beedle](https://www.codehawks.com/contests/clkbo1fa20009jr08nyyf9wbx) | 9 highs | 2 mediums | [Source](/Security%20Reports/codehawks/Beedle.md) | [Gas report](/Security%20Reports/codehawks/Beedle_GAS.md) | $187.12 USDC |
-| [Stablecoin](https://www.codehawks.com/contests/cljx3b9390009liqwuedkn0m0) | 1 high | 1 medium | [Source](/Security%20Reports/codehawks/Stablecoin.md) | [Gas report](/Security%20Reports/codehawks/Stablecoin_GAS.md) | - |
-| [Escrow](https://www.codehawks.com/contests/cljyfxlc40003jq082s0wemya) | - | - | - | [Gas report](/Security%20Reports/codehawks/Escrow_GAS.md) | - |
 
 # Sherlock  <img src="https://audits.sherlock.xyz/_next/static/media/sherlock_logo.bf519c9e.svg" width=22 height=22>
 
