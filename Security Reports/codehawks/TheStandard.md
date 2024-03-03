@@ -21,7 +21,9 @@ This project is aims to secure your crypto assets, such as ETH, WBTC, ARB, LINK,
 
 | Severity | Title | Count |
 |:--|:--|:--:|
-| High | Rewards can be drained because of lack of access control | [H-01] |
+| High | Rewards can be drained because of lack of access control **SELECTED** | [H-01] |
+
+**SELECTED** means that among all the duplicates the issue got selected for the [official report](https://www.codehawks.com/report/clkbo1fa20009jr08nyyf9wbx) because it was the most explanatory.
 
 # [H-01] Rewards can be drained because of lack of access control
 
