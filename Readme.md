@@ -7,24 +7,25 @@ Hello, and I am an independent blockchain security researcher. ⛓️💻
 
 # Mlome's wall of achievements
 
-| Overall issues found | High risk | Unique highs | Medium risk | Unique mediums | Gas optimization reports |
-|:--:|:--:|:--:|:--:|:--:|:--:|
-| 21 Issues found | 12 Highs | - | 9 Mediums | - | 11 Gas reports |
+| Overall issues found | High risk  | Medium risk | Gas optimization reports |
+|:--:|:--:|:--:|:--:|
+| 22 Issues found | 13 Highs | 9 Mediums | 11 Gas reports |
 
 # CodeHawks <img src="https://res.cloudinary.com/droqoz7lg/image/upload/v1689080263/snhkgvtsidryjdtx0pce.png" width=50 height=27>
 
 ### Audit Competitions
-| Contest | High risk | Medium risk | Security report | Gas optimizations | Payout 
-|:--|:--:|:--:|:--:|:--:|--:|
+| Contest | High risk | Medium risk | Security report | Gas optimizations |  
+|:--|:--:|:--:|:--:|:--:|
 | [Beedle](https://www.codehawks.com/contests/clkbo1fa20009jr08nyyf9wbx) | 9 highs | 2 mediums | [Source](/Security%20Reports/codehawks/Beedle.md) | [Gas report](/Security%20Reports/codehawks/Beedle_GAS.md) | $187.12 USDC |
 | [Stablecoin](https://www.codehawks.com/contests/cljx3b9390009liqwuedkn0m0) | 1 high | 1 medium | [Source](/Security%20Reports/codehawks/Stablecoin.md) | [Gas report](/Security%20Reports/codehawks/Stablecoin_GAS.md) | - |
+| [The Standard](https://www.codehawks.com/contests/clql6lvyu0001mnje1xpqcuvl) | 1 high | - | [Source](/Security%20Reports/codehawks/TheStandard.md) | - | - |
 | [Escrow](https://www.codehawks.com/contests/cljyfxlc40003jq082s0wemya) | - | - | - | [Gas report](/Security%20Reports/codehawks/Escrow_GAS.md) | - |
 
 # Code4rena <img src="https://code4rena.com/logos/c4-logo.svg" width=100 height=25>
 
 ### Audit Competitions
-| Contest | High risk | Medium risk | Security report | Gas optimizations | Payout 
-|:--|:--:|:--:|:--:|:--:|--:|
+| Contest | High risk | Medium risk | Security report | Gas optimizations |  
+|:--|:--:|:--:|:--:|:--:|
 | [PoolTogether](https://code4rena.com/contests/2023-07-pooltogether#top) | - | 1 medium | private | - | $569.07 USDC |
 | [Canto ID Protocol](https://code4rena.com/contests/2023-01-canto-identity-protocol-contest#top) | - | 1 medium | [Source](/Security%20Reports/code4rena/Canto_ID_Protocol.md) | [Gas report](/Security%20Reports/code4rena/Canto_ID_Protocol_GAS.md) | $135.96 CANTO |
 | [RabbitHole](https://code4rena.com/contests/2023-01-rabbithole-quest-protocol-contest#top) | 1 high | 1 medium | [Source](/Security%20Reports/code4rena/RabbitHole.md) | [Gas report](/Security%20Reports/code4rena/RabbitHole_GAS.md) | $119.15 USDC |
@@ -39,8 +40,8 @@ Hello, and I am an independent blockchain security researcher. ⛓️💻
 # Sherlock  <img src="https://audits.sherlock.xyz/_next/static/media/sherlock_logo.bf519c9e.svg" width=22 height=22>
 
 ### Audit Competitions
-| Contest | High risk | Medium risk | Security report | Gas optimizations | Payout 
-|:--|:--:|:--:|:--:|:--:|--:|
+| Contest | High risk | Medium risk | Security report | Gas optimizations |  
+|:--|:--:|:--:|:--:|:--:|
 | [Cooler Update](https://audits.sherlock.xyz/contests/107) | 1 high | 1 medium | [Source](/Security%20Reports/sherlock/Cooler_Update.md) | - | $26.24 USDC |
 | [Tokensoft](https://audits.sherlock.xyz/contests/100) | - | - | [Source](/Security%20Reports/sherlock/Tokensoft.md) | - | - |
 
